@@ -180,7 +180,15 @@ class restaurante:
         codigos = list(pedido.keys())
         preco_total = 0
 
+        if not codigos:
+            print("Nada a calcular.")
+            return
+
         for produto in codigos:
+
+            if produto not in self._products['Code'].values:
+                print(f"Produto '{produto}' não encontrado.")
+                continue
 
             coluna_packs = self._products.loc[self._products['Code'] == produto, 'Packs'].values[0]
 
@@ -245,23 +253,24 @@ class restaurante:
             })
 
             dfs.append(df_produto)
+        
+        if dfs:
+            df_pedido = pd.concat(dfs, ignore_index=True)
 
-        df_pedido = pd.concat(dfs, ignore_index=True)
+            df_final = pd.concat([df_pedido, df_historico], ignore_index=True)
 
-        df_final = pd.concat([df_pedido, df_historico], ignore_index=True)
+            total_row_index = df_final[df_final['Código do Produto'] == 'Total'].index
+            df_final_temp = df_final.drop(total_row_index)
 
-        total_row_index = df_final[df_final['Código do Produto'] == 'Total'].index
-        df_final_temp = df_final.drop(total_row_index)
+            soma_quantidade = df_final_temp['Quantidade'].sum()
+            soma_preco_total = df_final_temp['Preço Total'].sum()
 
-        soma_quantidade = df_final_temp['Quantidade'].sum()
-        soma_preco_total = df_final_temp['Preço Total'].sum()
+            df_final.loc[total_row_index, 'Quantidade'] = soma_quantidade
+            df_final.loc[total_row_index, 'Preço Total'] = soma_preco_total
 
-        df_final.loc[total_row_index, 'Quantidade'] = soma_quantidade
-        df_final.loc[total_row_index, 'Preço Total'] = soma_preco_total
+            df_final.to_excel(f'historico_pedidos.xlsx', index=False, engine='openpyxl')
 
-        df_final.to_excel(f'historico_pedidos.xlsx', index=False, engine='openpyxl')
-
-        print(f'\nTotal da compra: ${preco_total:.2f}')
+            print(f'\nTotal da compra: ${preco_total:.2f}')
 
     def visualizar_teste(self):
         print("Teste 1:")
@@ -310,7 +319,10 @@ def set_pedido():
             break
             
         if linha != '':
-            pedido_usuario.append(linha)
+            if re.match(r'^\d+\s+\w+$', linha):
+                pedido_usuario.append(linha)
+            else:
+                print("Formato inválido. Use o formato 'Quantidade Código'.")
         
     print(f"Pedido final: {pedido_usuario}")
 
